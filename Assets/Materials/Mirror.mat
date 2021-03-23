@@ -10,7 +10,7 @@ Material:
   m_Name: Mirror
   m_Shader: {fileID: 4800000, guid: 507e5419769c64e00932f47c2307f9fa, type: 3}
   m_ShaderKeywords: _EMISSION
-  m_LightmapFlags: 1
+  m_LightmapFlags: 0
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1

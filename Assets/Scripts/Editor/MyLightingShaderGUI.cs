@@ -69,6 +69,7 @@ public class MyLightingShaderGUI : ShaderGUI {
 		DoRenderingMode();
 		DoMain();
 		DoSecondary();
+		DoAdvanced();
 	}
 
 	void DoRenderingMode () {
@@ -132,7 +133,7 @@ public class MyLightingShaderGUI : ShaderGUI {
 
 		MaterialProperty mainTex = FindProperty("_MainTex");
 		editor.TexturePropertySingleLine(
-			MakeLabel(mainTex, "Albedo (RGB)"), mainTex, FindProperty("_Tint")
+			MakeLabel(mainTex, "Albedo (RGB)"), mainTex, FindProperty("_Color")
 		);
 
 		if (shouldShowAlphaCutoff) {
@@ -141,6 +142,7 @@ public class MyLightingShaderGUI : ShaderGUI {
 		DoMetallic();
 		DoSmoothness();
 		DoNormals();
+		DoParallax();
 		DoOcclusion();
 		DoEmission();
 		DoDetailMask();
@@ -148,7 +150,7 @@ public class MyLightingShaderGUI : ShaderGUI {
 	}
 
 	void DoAlphaCutoff () {
-		MaterialProperty slider = FindProperty("_AlphaCutoff");
+		MaterialProperty slider = FindProperty("_Cutoff");
 		EditorGUI.indentLevel += 2;
 		editor.ShaderProperty(slider, MakeLabel(slider));
 		EditorGUI.indentLevel -= 2;
@@ -206,6 +208,19 @@ public class MyLightingShaderGUI : ShaderGUI {
 		EditorGUI.indentLevel -= 3;
 	}
 
+	void DoParallax () {
+		MaterialProperty map = FindProperty("_ParallaxMap");
+		Texture tex = map.textureValue;
+		EditorGUI.BeginChangeCheck();
+		editor.TexturePropertySingleLine(
+			MakeLabel(map, "Parallax (G)"), map,
+			tex ? FindProperty("_ParallaxStrength") : null
+		);
+		if (EditorGUI.EndChangeCheck() && tex != map.textureValue) {
+			SetKeyword("_PARALLAX_MAP", map.textureValue);
+		}
+	}
+
 	void DoOcclusion () {
 		MaterialProperty map = FindProperty("_OcclusionMap");
 		Texture tex = map.textureValue;
@@ -227,8 +242,16 @@ public class MyLightingShaderGUI : ShaderGUI {
 			MakeLabel(map, "Emission (RGB)"), map, FindProperty("_Emission"),
 			emissionConfig, false
 		);
-		if (EditorGUI.EndChangeCheck() && tex != map.textureValue) {
-			SetKeyword("_EMISSION_MAP", map.textureValue);
+		editor.LightmapEmissionProperty(2);
+		if (EditorGUI.EndChangeCheck()) {
+			if (tex != map.textureValue) {
+				SetKeyword("_EMISSION_MAP", map.textureValue);
+			}
+
+			foreach (Material m in editor.targets) {
+				m.globalIlluminationFlags &=
+					~MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+			}
 		}
 	}
 
@@ -269,6 +292,12 @@ public class MyLightingShaderGUI : ShaderGUI {
 		if (EditorGUI.EndChangeCheck() && tex != map.textureValue) {
 			SetKeyword("_DETAIL_NORMAL_MAP", map.textureValue);
 		}
+	}
+
+	void DoAdvanced () {
+		GUILayout.Label("Advanced Options", EditorStyles.boldLabel);
+
+		editor.EnableInstancingField();
 	}
 
 	MaterialProperty FindProperty (string name) {
