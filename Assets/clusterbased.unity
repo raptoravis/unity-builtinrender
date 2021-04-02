@@ -1159,9 +1159,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff4f81f878eb56f42a74d5f77f05f467, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cubeTransform: {fileID: 1110742595}
-  cubeMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  pureColorMaterial: {fileID: 2100000, guid: e149066f149cf934b828c56cdb41c69d, type: 2}
+  m_ClusterGridBlockSize: 32
+  cs_ComputeClusterAABB: {fileID: 7200000, guid: e0c85bd5e8ad07242b37522db5164cb6,
+    type: 3}
+  mtlDebugCluster: {fileID: 2100000, guid: eb4ea505f91cc544a9e83368175b345f, type: 2}
 --- !u!20 &918369947
 Camera:
   m_ObjectHideFlags: 0
