@@ -31,7 +31,7 @@ struct AABB
 #endif
 public class Script_ClusterBasedLighting : MonoBehaviour
 {
-    Camera _camera;
+    private Camera _camera;
     private RenderTexture _rtColor;
     private RenderTexture _rtDepth;
 
@@ -81,13 +81,18 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         _rtColor = new RenderTexture(Screen.width, Screen.height, 24);
         _rtDepth = new RenderTexture(Screen.width, Screen.height, 24, RenderTextureFormat.Depth, RenderTextureReadWrite.Linear);
 
-        _camera = Camera.current;
-        CalculateMDim(_camera);
+        _camera = this.gameObject.GetComponent<Camera>();
 
-        int stride = Marshal.SizeOf(typeof(AABB));
-        cb_ClusterAABBs = new ComputeBuffer(m_DimData.clusterDimXYZ, stride);
+        if (_camera != null)
+        {
+            //_camera = Camera.current;
+            CalculateMDim(_camera);
 
-        Pass_ComputeClusterAABB();
+            int stride = Marshal.SizeOf(typeof(AABB));
+            cb_ClusterAABBs = new ComputeBuffer(m_DimData.clusterDimXYZ, stride);
+
+            Pass_ComputeClusterAABB();
+        }
     }
 
     void UpdateClusterCBuffer(ComputeShader cs)

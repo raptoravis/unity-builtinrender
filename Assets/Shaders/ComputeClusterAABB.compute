@@ -10,8 +10,8 @@ float ClusterCB_NearK; // ( 1 + ( 2 * tan( fov * 0.5 ) / ClusterGridDim.y ) ) //
 float ClusterCB_LogGridDimY; // 1.0f / log( 1 + ( tan( fov * 0.5 ) / ClusterGridDim.y )
 float4 ClusterCB_ScreenDimensions;
 
-//float4x4 _InverseProjectionMatrix;
-float4x4 unity_CameraInvProjection;
+float4x4 _InverseProjectionMatrix;
+//float4x4 unity_CameraInvProjection;
 
 struct Plane
 {
@@ -82,7 +82,7 @@ float4 ClipToView(float4 clip)
 {
 	// View space position.
 	//float4 view = mul(clip, g_Com.Camera.CameraProjectInv);
-    float4 view = mul(unity_CameraInvProjection, clip);
+    float4 view = mul(_InverseProjectionMatrix, clip);
 	// Perspecitive projection.
     view = view / view.w;
 
