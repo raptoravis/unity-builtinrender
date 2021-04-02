@@ -13,7 +13,7 @@
 		CGPROGRAM
 #pragma vertex main_VS
 #pragma fragment main_PS
-//#pragma geometry main_GS
+#pragma geometry main_GS
 #pragma target 5.0
 #pragma enable_d3d11_debug_symbols
 
