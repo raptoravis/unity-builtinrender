@@ -26,9 +26,7 @@ struct AABB
 };
 
 [ExecuteInEditMode]
-#if UNITY_5_4_OR_NEWER
 [ImageEffectAllowedInSceneView]
-#endif
 public class Script_ClusterBasedLighting : MonoBehaviour
 {
     private Camera _camera;
@@ -37,11 +35,15 @@ public class Script_ClusterBasedLighting : MonoBehaviour
 
     public int m_ClusterGridBlockSize = 32;
     public ComputeShader cs_ComputeClusterAABB;
+    public ComputeShader cs_AssignLightsToClusts;
     public Material mtlDebugCluster;
 
     CD_DIM m_DimData;
 
     private ComputeBuffer cb_ClusterAABBs;
+    private ComputeBuffer cb_PointLightPosRadius;
+
+    private List<Light> lightList;
 
     void CalculateMDim(Camera cam)
     {
@@ -131,10 +133,45 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         mtlDebugCluster.SetBuffer("ClusterAABBs", cb_ClusterAABBs);
 
         mtlDebugCluster.SetPass(0);
+
+        mtlDebugCluster.SetMatrix("_CameraWorldMatrix", _camera.transform.localToWorldMatrix);
+
         Graphics.DrawProceduralNow(MeshTopology.Points, m_DimData.clusterDimXYZ);
 
         GL.wireframe = false;
     }
+
+    void UpdateLightBuffer()
+    {
+        List<Vector4> lightPosRatioList = new List<Vector4>();
+        foreach (var lit in lightList)
+        {
+            lightPosRatioList.Add(new Vector4(lit.transform.position.x, lit.transform.position.y, lit.transform.position.z, lit.range));
+        }
+
+        cb_PointLightPosRadius.SetData(lightPosRatioList);
+    }
+
+    void Pass_AssignLightsToClusts()
+    {
+        ClearLightGirdIndexCounter();
+
+        int kernel = cs_AssignLightsToClusts.FindKernel("CSMain");
+
+        //Output
+        cs_AssignLightsToClusts.SetBuffer(kernel, "RWPointLightIndexCounter_Cluster", cb_ClusterPointLightIndexCounter);
+        cs_AssignLightsToClusts.SetBuffer(kernel, "RWPointLightGrid_Cluster", cb_ClusterPointLightGrid);
+        cs_AssignLightsToClusts.SetBuffer(kernel, "RWPointLightIndexList_Cluster", cb_ClusterPointLightIndexList);
+
+        //Input
+        cs_AssignLightsToClusts.SetInt("PointLightCount", lightList.Count);
+        cs_AssignLightsToClusts.SetMatrix("_CameraLastViewMatrix", _camera.transform.worldToLocalMatrix);
+        cs_AssignLightsToClusts.SetBuffer(kernel, "PointLights", cb_PointLightPosRadius);
+        cs_AssignLightsToClusts.SetBuffer(kernel, "ClusterAABBs", cb_ClusterAABBs);
+
+        cs_AssignLightsToClusts.Dispatch(kernel, m_DimData.clusterDimXYZ, 1, 1);
+    }
+
     void OnRenderImage(RenderTexture sourceTexture, RenderTexture destTexture)
     {
         Graphics.SetRenderTarget(_rtColor.colorBuffer, _rtDepth.depthBuffer);
@@ -144,4 +181,5 @@ public class Script_ClusterBasedLighting : MonoBehaviour
 
         Graphics.Blit(_rtColor, destTexture);
     }
+   
 }
