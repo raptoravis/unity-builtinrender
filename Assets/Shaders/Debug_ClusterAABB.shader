@@ -41,6 +41,8 @@
 		StructuredBuffer<AABB> ClusterAABBs;// : register(t1);
 		float4x4 _CameraWorldMatrix;
 
+		StructuredBuffer<uint2> PointLightGrid_Cluster;
+
 		bool CMin(float3 a, float3 b)
 		{
 			if (a.x < b.x && a.y < b.y && a.z < b.z)
@@ -83,6 +85,13 @@
 			//factor *= 0.2;
 			vsOutput.Max = aabb.Min + factor;
 			vsOutput.Color = float4(1,1,1,1);
+
+			float fClusterLightCount = PointLightGrid_Cluster[clusterID].y;
+			if (fClusterLightCount > 0)
+			{
+				vsOutput.Color = float4(1, 0, 0, 1);
+			}
+
 
 			return vsOutput;
 		}

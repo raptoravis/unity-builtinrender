@@ -40,8 +40,16 @@ public class Script_ClusterBasedLighting : MonoBehaviour
 
     CD_DIM m_DimData;
 
+
+    const int MaxLightsCount = 10000;
+
     private ComputeBuffer cb_ClusterAABBs;
     private ComputeBuffer cb_PointLightPosRadius;
+
+    private ComputeBuffer cb_ClusterPointLightIndexCounter;
+    private ComputeBuffer cb_ClusterPointLightGrid;
+    private ComputeBuffer cb_ClusterPointLightIndexList;
+
 
     private List<Light> lightList;
 
@@ -93,6 +101,8 @@ public class Script_ClusterBasedLighting : MonoBehaviour
             int stride = Marshal.SizeOf(typeof(AABB));
             cb_ClusterAABBs = new ComputeBuffer(m_DimData.clusterDimXYZ, stride);
 
+            cb_ClusterPointLightGrid = new ComputeBuffer(MaxLightsCount, Marshal.SizeOf(typeof(Vector4)));
+
             Pass_ComputeClusterAABB();
         }
     }
@@ -131,6 +141,7 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         GL.wireframe = true;
 
         mtlDebugCluster.SetBuffer("ClusterAABBs", cb_ClusterAABBs);
+        mtlDebugCluster.SetBuffer("PointLightGrid_Cluster", cb_ClusterPointLightGrid);
 
         mtlDebugCluster.SetPass(0);
 
@@ -152,6 +163,11 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         cb_PointLightPosRadius.SetData(lightPosRatioList);
     }
 
+    void ClearLightGirdIndexCounter()
+    { 
+    }
+
+
     void Pass_AssignLightsToClusts()
     {
         ClearLightGirdIndexCounter();
@@ -168,6 +184,8 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         cs_AssignLightsToClusts.SetMatrix("_CameraLastViewMatrix", _camera.transform.worldToLocalMatrix);
         cs_AssignLightsToClusts.SetBuffer(kernel, "PointLights", cb_PointLightPosRadius);
         cs_AssignLightsToClusts.SetBuffer(kernel, "ClusterAABBs", cb_ClusterAABBs);
+
+        cs_AssignLightsToClusts.SetMatrix("_CameraLastViewMatrix", _camera.transform.worldToLocalMatrix);
 
         cs_AssignLightsToClusts.Dispatch(kernel, m_DimData.clusterDimXYZ, 1, 1);
     }

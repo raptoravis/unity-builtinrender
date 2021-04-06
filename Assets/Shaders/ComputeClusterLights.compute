@@ -21,6 +21,8 @@ RWStructuredBuffer<uint> RWPointLightIndexList_Cluster; // : register(u6);
 StructuredBuffer<AABB> ClusterAABBs; // : register(t1);
 StructuredBuffer<float4> PointLights; // : register(t8);
 
+float4x4    _CameraLastViewMatrix;
+
 uint PointLightCount;
 
 // Compute the square distance between a point p and an AABB b.
@@ -49,6 +51,13 @@ bool SphereInsideAABB(Sphere sphere, AABB aabb)
     float sqDistance = SqDistancePointAABB(sphere.c, aabb);
 
     return sqDistance <= sphere.r * sphere.r;
+}
+
+float4 WorldToView(float4 posWorld)
+{
+    float4 posView = mul(_CameraLastViewMatrix, posWorld);
+	//posView.z *= -1;
+    return posView;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +106,9 @@ void CSMain(ComputeShaderInput IN)
 		//if ( PointLights[i].Enabled )
 		{
             float4 pointLight = PointLights[i];
-            float3 pointLightPosView = pointLight.xyz;
+            //float3 pointLightPosView = pointLight.xyz;
+            float3 pointLightPosView = WorldToView(float4(pointLight.xyz, 1)).xyz; // mul(float4(pointLight.xyz, 1), _CameraLastViewMatrix).xyz;
+            
             Sphere sphere = { pointLightPosView, pointLight.w };
 
             if (SphereInsideAABB(sphere, gs_ClusterAABB))
