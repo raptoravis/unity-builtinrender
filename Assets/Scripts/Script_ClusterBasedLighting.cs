@@ -29,6 +29,11 @@ struct AABB
 [ImageEffectAllowedInSceneView]
 public class Script_ClusterBasedLighting : MonoBehaviour
 {
+    public GameObject go_SceneListParent;
+    private List<Material> lst_Mtl;
+    private List<Mesh> lst_Mesh;
+    private List<Transform> lst_TF;
+
     private Camera _camera;
     private RenderTexture _rtColor;
     private RenderTexture _rtDepth;
@@ -42,6 +47,7 @@ public class Script_ClusterBasedLighting : MonoBehaviour
 
 
     const int MaxLightsCount = 10000;
+    const int m_AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER = 200;
 
     private ComputeBuffer cb_ClusterAABBs;
     private ComputeBuffer cb_PointLightPosRadius;
@@ -50,6 +56,12 @@ public class Script_ClusterBasedLighting : MonoBehaviour
     private ComputeBuffer cb_ClusterPointLightGrid;
     private ComputeBuffer cb_ClusterPointLightIndexList;
 
+    private ComputeBuffer cb_UniqueClusterCount;
+    private ComputeBuffer cb_IAB_AssignLightsToClusters;
+    private ComputeBuffer cb_IAB_DrawDebugClusters;
+
+    private ComputeBuffer cb_ClusterFlag;
+    private ComputeBuffer cb_UniqueClusters;
 
     private List<Light> lightList;
 
@@ -85,6 +97,20 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         m_DimData.clusterDimZ = clusterDimZ;
         m_DimData.clusterDimXYZ = clusterDimX * clusterDimY * clusterDimZ;
     }
+    void InitClusterBuffers()
+    {
+        cb_ClusterPointLightIndexCounter = new ComputeBuffer(1, sizeof(uint));
+        cb_UniqueClusterCount = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+        cb_IAB_AssignLightsToClusters = new ComputeBuffer(1, sizeof(uint) * 3, ComputeBufferType.IndirectArguments);
+        cb_IAB_DrawDebugClusters = new ComputeBuffer(1, sizeof(uint) * 4, ComputeBufferType.IndirectArguments);
+
+
+        cb_ClusterPointLightGrid = new ComputeBuffer(m_DimData.clusterDimXYZ, sizeof(uint) * 2);
+        cb_ClusterPointLightIndexList = new ComputeBuffer(m_DimData.clusterDimXYZ * m_AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, sizeof(uint));
+
+        cb_ClusterFlag = new ComputeBuffer(m_DimData.clusterDimXYZ, sizeof(float));
+        cb_UniqueClusters = new ComputeBuffer(m_DimData.clusterDimXYZ, sizeof(uint), ComputeBufferType.Counter);
+    }
 
     void Start()
     {
@@ -95,8 +121,12 @@ public class Script_ClusterBasedLighting : MonoBehaviour
 
         if (_camera != null)
         {
+            InitSceneObject();
+
             //_camera = Camera.current;
             CalculateMDim(_camera);
+
+            InitClusterBuffers();
 
             int stride = Marshal.SizeOf(typeof(AABB));
             cb_ClusterAABBs = new ComputeBuffer(m_DimData.clusterDimXYZ, stride);
@@ -190,14 +220,62 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         cs_AssignLightsToClusts.Dispatch(kernel, m_DimData.clusterDimXYZ, 1, 1);
     }
 
+    void InitSceneObject()
+    {
+        if (Application.isPlaying)
+        {
+            lst_Mesh = new List<Mesh>();
+            lst_TF = new List<Transform>();
+            lst_Mtl = new List<Material>();
+
+            MeshFilter[] mf_Parent = go_SceneListParent.GetComponentsInChildren<MeshFilter>();
+            foreach (MeshFilter mf in mf_Parent)
+            {
+                lst_Mesh.Add(mf.mesh);
+            }
+
+            Transform[] tf_Parent = go_SceneListParent.GetComponentsInChildren<Transform>();
+            foreach (Transform tf in tf_Parent)
+            {
+                lst_TF.Add(tf);
+            }
+
+            MeshRenderer[] mr_Parent = go_SceneListParent.GetComponentsInChildren<MeshRenderer>();
+            foreach (MeshRenderer mr in mr_Parent)
+            {
+                Material mtl = new Material(Shader.Find("Unlit/Texture"));
+                mtl.SetTexture("_MainTex", mr.material.GetTexture("_MainTex"));
+                lst_Mtl.Add(mtl);
+            }
+        }
+    }
+
+    void Pass_DrawSceneColor()
+    {
+        if (lst_Mesh != null)
+        {
+            //GL.wireframe = true;
+            for (int i = 0; i < lst_Mesh.Count; i++)
+            {
+                lst_Mtl[i].SetPass(0);
+                Graphics.DrawMeshNow(lst_Mesh[i], lst_TF[i].localToWorldMatrix);
+            }
+        }
+        //GL.wireframe = false;
+    }
+
     void OnRenderImage(RenderTexture sourceTexture, RenderTexture destTexture)
     {
-        Graphics.SetRenderTarget(_rtColor.colorBuffer, _rtDepth.depthBuffer);
-        GL.Clear(true, true, Color.gray);
+        if (Application.isPlaying)
+        {
+            Graphics.SetRenderTarget(_rtColor.colorBuffer, _rtDepth.depthBuffer);
+            GL.Clear(true, true, Color.gray);
 
-        Pass_DebugCluster();
+            Pass_DrawSceneColor();
+            //Pass_DebugCluster();
 
-        Graphics.Blit(_rtColor, destTexture);
+            Graphics.Blit(_rtColor, destTexture);
+        }
     }
    
 }
