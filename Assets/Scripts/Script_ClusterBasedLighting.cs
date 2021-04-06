@@ -41,6 +41,8 @@ public class Script_ClusterBasedLighting : MonoBehaviour
     public int m_ClusterGridBlockSize = 32;
     public ComputeShader cs_ComputeClusterAABB;
     public ComputeShader cs_AssignLightsToClusts;
+    public ComputeShader cs_ClusterSample;
+    public ComputeShader cs_FindUniqueClusters;
 
     public Material mtlDebugCluster;
     private Material mtl_DpethPrePass;
@@ -66,6 +68,25 @@ public class Script_ClusterBasedLighting : MonoBehaviour
     private ComputeBuffer cb_UniqueClusters;
 
     private List<Light> lightList;
+
+
+    class ShaderIDs_t
+    {
+        public string DepthTexture;
+        public string RWClusterFlags;
+        public string InverseProjectionMatrix;
+        public string ClusterCB_ScreenDimensions;
+
+        public ShaderIDs_t()
+        {
+            DepthTexture = "DepthTexture";
+            RWClusterFlags = "RWClusterFlags";
+            InverseProjectionMatrix = "_InverseProjectionMatrix";
+            ClusterCB_ScreenDimensions = "ClusterCB_ScreenDimensions";
+        }
+    };
+
+    ShaderIDs_t ShaderIDs = new ShaderIDs_t();
 
     void CalculateMDim(Camera cam)
     {
@@ -277,6 +298,45 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         DrawMeshListNow();
     }
 
+    void ClearClusterFlag()
+    { }
+
+    void Pass_ClusterSample_CSVer()
+    {
+        ClearClusterFlag();
+        UpdateClusterCBuffer(cs_ClusterSample);
+
+        var projectionMatrix = GL.GetGPUProjectionMatrix(_camera.projectionMatrix, true);
+        var projectionMatrixInvers = projectionMatrix.inverse;
+
+        int kernel = cs_ClusterSample.FindKernel("CSMain");
+        Vector4 screenDim = new Vector4((float)Screen.width, (float)Screen.height, 1.0f / Screen.width, 1.0f / Screen.height);
+
+        cs_ClusterSample.SetTexture(kernel, ShaderIDs.DepthTexture, _rtDepth);
+        cs_ClusterSample.SetBuffer(kernel, ShaderIDs.RWClusterFlags, cb_ClusterFlag);
+        cs_ClusterSample.SetMatrix(ShaderIDs.InverseProjectionMatrix, projectionMatrixInvers);
+        cs_ClusterSample.SetVector(ShaderIDs.ClusterCB_ScreenDimensions, screenDim);
+
+        cs_ClusterSample.Dispatch(kernel, Mathf.CeilToInt(Screen.width / 32.0f), Mathf.CeilToInt(Screen.height / 32.0f), 1);
+    }
+
+    void ClearUniqueCluster()
+    { }
+
+    void Pass_FinduniqueCluster()
+    {
+        ClearUniqueCluster();
+
+        cb_UniqueClusters.SetCounterValue(0);
+
+        int threadGroups = Mathf.CeilToInt(m_DimData.clusterDimXYZ / 1024.0f);
+
+        int kernel = cs_FindUniqueClusters.FindKernel("CSMain");
+        cs_FindUniqueClusters.SetBuffer(kernel, "RWUniqueClusters", cb_UniqueClusters);
+        cs_FindUniqueClusters.SetBuffer(kernel, "ClusterFlags", cb_ClusterFlag);
+        cs_FindUniqueClusters.Dispatch(kernel, threadGroups, 1, 1);
+    }
+
     void DrawMeshListNow()
     {
         for (int i = 0; i < lst_Mesh.Count; i++)
@@ -294,6 +354,12 @@ public class Script_ClusterBasedLighting : MonoBehaviour
             Pass_DrawSceneColor();
 
             Pass_DepthPre();
+
+            Pass_ClusterSample_CSVer();
+
+            Pass_FinduniqueCluster();
+
+            ComputeBuffer.CopyCount(cb_UniqueClusters, cb_UniqueClusterCount, 0);
 
             //Pass_DebugCluster();
 

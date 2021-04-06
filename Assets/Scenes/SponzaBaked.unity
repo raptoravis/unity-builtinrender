@@ -266,6 +266,9 @@ MonoBehaviour:
     type: 3}
   cs_AssignLightsToClusts: {fileID: 7200000, guid: 3eb382ebb7f1f784fb35b17c6b5963cd,
     type: 3}
+  cs_ClusterSample: {fileID: 7200000, guid: 0a940fcddd38d854687daf5847cfbad9, type: 3}
+  cs_FindUniqueClusters: {fileID: 7200000, guid: 307ffac258865f64a9457153f9014c75,
+    type: 3}
   mtlDebugCluster: {fileID: 2100000, guid: e149066f149cf934b828c56cdb41c69d, type: 2}
 --- !u!1 &1160096926 stripped
 GameObject:
