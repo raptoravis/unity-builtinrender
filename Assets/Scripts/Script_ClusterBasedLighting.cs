@@ -41,7 +41,9 @@ public class Script_ClusterBasedLighting : MonoBehaviour
     public int m_ClusterGridBlockSize = 32;
     public ComputeShader cs_ComputeClusterAABB;
     public ComputeShader cs_AssignLightsToClusts;
+
     public Material mtlDebugCluster;
+    private Material mtl_DpethPrePass;
 
     CD_DIM m_DimData;
 
@@ -264,6 +266,24 @@ public class Script_ClusterBasedLighting : MonoBehaviour
         //GL.wireframe = false;
     }
 
+    void Pass_DepthPre()
+    {
+        if (mtl_DpethPrePass == null)
+        {
+            mtl_DpethPrePass = new Material(Shader.Find("MyTest/ClusterBasedForward/Shader_DepthPrePass"));
+        }
+
+        mtl_DpethPrePass.SetPass(0);
+        DrawMeshListNow();
+    }
+
+    void DrawMeshListNow()
+    {
+        for (int i = 0; i < lst_Mesh.Count; i++)
+        {
+            Graphics.DrawMeshNow(lst_Mesh[i], lst_TF[i].localToWorldMatrix);
+        }
+    }
     void OnRenderImage(RenderTexture sourceTexture, RenderTexture destTexture)
     {
         if (Application.isPlaying)
@@ -272,6 +292,9 @@ public class Script_ClusterBasedLighting : MonoBehaviour
             GL.Clear(true, true, Color.gray);
 
             Pass_DrawSceneColor();
+
+            Pass_DepthPre();
+
             //Pass_DebugCluster();
 
             Graphics.Blit(_rtColor, destTexture);
