@@ -72,7 +72,8 @@
 
 		VertexShaderOutput main_VS(uint VertexID : SV_VertexID)
 		{
-			uint clusterID = VertexID; ;// UniqueClusters[VertexID];// VertexID;
+			//uint clusterID = VertexID; ;// UniqueClusters[VertexID];// VertexID;
+			uint clusterID = UniqueClusters[VertexID];// VertexID;
 
 			VertexShaderOutput vsOutput = (VertexShaderOutput)0;
 

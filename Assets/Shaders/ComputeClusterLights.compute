@@ -14,6 +14,8 @@ struct Sphere
     float r; // Radius.
 };
 
+StructuredBuffer<uint> UniqueClusters;
+
 RWStructuredBuffer<uint> RWPointLightIndexCounter_Cluster; // : register(u2);
 RWStructuredBuffer<uint2> RWPointLightGrid_Cluster; // : register(u4);
 RWStructuredBuffer<uint> RWPointLightIndexList_Cluster; // : register(u6);
@@ -94,7 +96,8 @@ void CSMain(ComputeShaderInput IN)
         gs_PointLightCount = 0;
         gs_SpotLightCount = 0;
 
-        gs_ClusterIndex1D = IN.GroupID.x;
+        //gs_ClusterIndex1D = IN.GroupID.x;
+        gs_ClusterIndex1D = UniqueClusters[IN.GroupID.x];
         gs_ClusterAABB = ClusterAABBs[gs_ClusterIndex1D];
     }
 
