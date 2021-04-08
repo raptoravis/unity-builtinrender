@@ -42,6 +42,7 @@
 		float4x4 _CameraWorldMatrix;
 
 		StructuredBuffer<uint2> PointLightGrid_Cluster;
+		StructuredBuffer<uint> UniqueClusters;
 
 		bool CMin(float3 a, float3 b)
 		{
