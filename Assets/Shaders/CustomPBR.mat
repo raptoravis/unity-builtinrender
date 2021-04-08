@@ -25,8 +25,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _Anisotropic: 0
-    - _Glossiness: 0.869
-    - _Metallic: 0
+    - _Glossiness: 0.865
+    - _Ior: 1.5
+    - _Metallic: 0.504
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}

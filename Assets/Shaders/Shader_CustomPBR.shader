@@ -330,6 +330,34 @@ Shader "Physically-Based-Lighting" {
             return SpecularColor + (1 - SpecularColor) * pow(2,power);
         }
 
+        UnityGI GetUnityGI(float3 lightColor, float3 lightDirection, float3 normalDirection,float3 viewDirection, 
+            float3 viewReflectDirection, float attenuation, float roughness, float3 worldPos){
+            //Unity light Setup ::
+            UnityLight light;
+            light.color = lightColor;
+            light.dir = lightDirection;
+            light.ndotl = max(0.0h,dot( normalDirection, lightDirection));
+            UnityGIInput d;
+            d.light = light;
+            d.worldPos = worldPos;
+            d.worldViewDir = viewDirection;
+            d.atten = attenuation;
+            d.ambient = 0.0h;
+            d.boxMax[0] = unity_SpecCube0_BoxMax;
+            d.boxMin[0] = unity_SpecCube0_BoxMin;
+            d.probePosition[0] = unity_SpecCube0_ProbePosition;
+            d.probeHDR[0] = unity_SpecCube0_HDR;
+            d.boxMax[1] = unity_SpecCube1_BoxMax;
+            d.boxMin[1] = unity_SpecCube1_BoxMin;
+            d.probePosition[1] = unity_SpecCube1_ProbePosition;
+            d.probeHDR[1] = unity_SpecCube1_HDR;
+            Unity_GlossyEnvironmentData ugls_en_data;
+            ugls_en_data.roughness = roughness;
+            ugls_en_data.reflUVW = viewReflectDirection;
+            UnityGI gi = UnityGlobalIllumination(d, 1.0h, normalDirection, ugls_en_data );
+            return gi;
+        }
+
         float4 frag(VertexOutput i) : COLOR {
 
             //normal direction calculations
@@ -374,13 +402,14 @@ Shader "Physically-Based-Lighting" {
             //future code will go here!    Fragment Section
             float3 SpecularDistribution = specColor;
             float GeometricShadow = 1;
+            float3 FresnelFunction = 1;
 
             //the algorithm implementations will go here
             //SpecularDistribution *=  BlinnPhongNormalDistribution(NdotH, _Glossiness,  max(1,_Glossiness * 40));
             //SpecularDistribution *=  PhongNormalDistribution(RdotV, _Glossiness, max(1,_Glossiness * 40));
             //SpecularDistribution *=  BeckmannNormalDistribution(roughness, NdotH);
             //SpecularDistribution *=  GaussianNormalDistribution(roughness, NdotH);
-            //SpecularDistribution *=  GGXNormalDistribution(roughness, NdotH);
+            SpecularDistribution *=  GGXNormalDistribution(roughness, NdotH);
             //SpecularDistribution *=  TrowbridgeReitzNormalDistribution(NdotH, roughness);
             //SpecularDistribution *=  TrowbridgeReitzAnisotropicNormalDistribution(_Anisotropic,NdotH, 
             //    dot(halfDirection, i.tangentDir), 
@@ -397,12 +426,38 @@ Shader "Physically-Based-Lighting" {
             GeometricShadow *= SchlickGGXGeometricShadowingFunction (NdotL, NdotV, roughness);
 
 
-            //FresnelFunction *=  SchlickFresnelFunction(specColor, LdotH);
+            FresnelFunction *=  SchlickFresnelFunction(specColor, LdotH);
             //FresnelFunction *=  SchlickIORFresnelFunction(_Ior, LdotH);
             //FresnelFunction *= SphericalGaussianFresnelFunction(LdotH, specColor);
 
             //return float4(float3(1,1,1) * SpecularDistribution.rgb,1);
-            return float4(float3(1,1,1) * GeometricShadow,1);
+            //return float4(float3(1,1,1) * GeometricShadow,1);
+            float3 specularity = (SpecularDistribution * FresnelFunction * GeometricShadow) / (4 * (  NdotL * NdotV));
+
+            UnityGI gi =  GetUnityGI(_LightColor0.rgb, lightDirection, 
+                normalDirection, viewDirection, viewReflectDirection, attenuation, 1- _Glossiness, i.posWorld.xyz);
+
+            float3 indirectDiffuse = gi.indirect.diffuse.rgb ;
+            float3 indirectSpecular = gi.indirect.specular.rgb;
+
+            float grazingTerm = saturate(roughness + _Metallic);
+            float3 unityIndirectSpecularity =  indirectSpecular * FresnelLerp(specColor,grazingTerm,NdotV) * 
+                max(0.15,_Metallic) * (1-roughness*roughness* roughness);
+
+            //float3 lightingModel = (diffuseColor + specularity 
+            //    + (unityIndirectSpecularity *_UnityLightingContribution));
+
+            float3 lightingModel = (diffuseColor + specularity);
+            lightingModel *= NdotL;
+
+            float3 indirect = saturate(indirectDiffuse + unityIndirectSpecularity);
+
+            lightingModel += indirect;
+
+            float4 finalDiffuse = float4(lightingModel * attenColor,1);
+
+
+            return finalDiffuse;
         }
         ENDCG
        }
